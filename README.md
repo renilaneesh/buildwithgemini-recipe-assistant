@@ -1,67 +1,96 @@
-# Recipe Assistant Agent
+# Chef AI — Recipe Assistant & Culinary Companion
 
 ![Recipe Assistant Demo](demo.gif)
 
-An interactive, AI-powered culinary assistant built with Google Agent Development Kit (ADK) and Gemini. The **Recipe Assistant Agent** helps users discover, search, scale, and save recipes in a personal collection while remembering personal dietary preferences across sessions and generating dish images.
+An executive-grade, AI-powered culinary companion built with the **Google Agent Development Kit (ADK)** and powered by **Gemini**. The **Chef AI Recipe Assistant** enables users to discover, search, scale, and save recipes in a personal cloud collection while dynamically maintaining user dietary preferences across sessions, executing secure Python sandboxed calculations, and rendering rich interactive A2UI card surfaces alongside AI-generated dish photography.
 
 ---
 
-## 🌟 Features & Implemented Services
+## 🏛️ System Architecture
 
-The project integrates the following Google Cloud services, tools, and UI framework capabilities:
+The Recipe Assistant is engineered as a decoupled, microservices-oriented agent system leveraging the Agent-to-Agent (A2A) protocol and Google Cloud AI infrastructure.
 
-- **Agent Engine / Agent Runtime Deployment**: Powered by `gemini-2.5-flash` running on Vertex AI Agent Engine.
-- **Vertex AI Memory Bank**: Automatic extraction and preloading of user dietary preferences (e.g., gluten-free, Italian cuisine) across sessions via `PreloadMemoryTool` and post-turn memory callbacks.
-- **Google Cloud Firestore Database**: Persistent recipe collection storage and querying via `save_recipe`, `search_recipes`, and `get_recipe_details` tools.
-- **Google Cloud Storage (Public Bucket)**: Stores generated dish photos in a public bucket (`recipe-assistant-photos-1a15618a`) and serves public HTTPS image URLs.
-- **AI Dish Image Generation**: Dish photography generation powered by `gemini-3.1-flash-lite-image` (in global region) via `generate_dish_photo`.
-- **External Recipe Search API**: Real-time recipe lookup powered by public recipe search integration (`search_online_recipes`).
-- **Agent Engine Sandbox Code Execution**: Secure Python code execution environment (`AgentEngineSandboxCodeExecutor` & `run_code`) for recipe scaling, unit conversions, and culinary calculations.
-- **A2UI Declarative Interface**: Rendered with `A2uiSchemaManager` (v0.8 Basic Catalog) and `a2ui_callback` to format interactive cards and image components natively.
-- **FastAPI Proxy & A2A Chat Frontend**: Minimal proxy server located in `./frontend` that authenticates via Application Default Credentials (ADC) and communicates with the agent using the Agent-to-Agent (A2A) protocol.
+```mermaid
+graph TD
+    Client[Browser / User Interface] -->|HTTP POST /chat| Proxy[FastAPI Frontend Proxy]
+    Proxy -->|A2A Protocol / ADC Auth| AgentEngine[Vertex AI Reasoning Engine / Agent Runtime]
+    
+    subgraph Agent Architecture
+        AgentEngine -->|State & System Prompt| Gemini[Gemini 2.5 Flash Model]
+        AgentEngine -->|Memory Callbacks| MemoryBank[Vertex AI Memory Bank]
+        AgentEngine -->|Sandboxed Calculation| CodeSandbox[AgentEngineSandboxCodeExecutor]
+        AgentEngine -->|A2UI Callback| A2UI[A2UI Schema Manager v0.8]
+    end
 
-### 📋 Status of Planned Features
+    subgraph External & Cloud Infrastructure
+        AgentEngine -->|CRUD Operations| Firestore[(Google Cloud Firestore)]
+        AgentEngine -->|Dish Photography| Imagen[Gemini 3.1 Flash Lite Image]
+        Imagen -->|Store Asset| GCS[(Google Cloud Storage Public Bucket)]
+        AgentEngine -->|External Recipe Search| TheMealDB[TheMealDB API]
+    end
+```
 
-| Feature | Status | Notes |
+---
+
+## ⚡ Core AI & Platform Capabilities
+
+| Capability | Integration Layer | Technical Implementation Details |
 | :--- | :--- | :--- |
-| Firestore Recipe Storage | ✅ Implemented | Read/write Firestore database collection |
-| Memory Bank Preferences | ✅ Implemented | Vertex AI Memory Bank session persistence |
-| Image Generation | ✅ Implemented | `gemini-3.1-flash-lite-image` + GCS hosting |
-| Code Execution Sandbox | ✅ Implemented | `AgentEngineSandboxCodeExecutor` |
-| A2UI Card Surfaces | ✅ Implemented | Schema v0.8 Basic Catalog |
-| External Recipe Search | ✅ Implemented | Public API tool |
-| Vector RAG Knowledge Base | ⏳ Planned | Planned, not yet implemented |
+| **Reasoning & Planning** | Gemini 2.5 Flash | Root agent orchestration using ADK framework with multi-tool call capability. |
+| **Declarative UI (A2UI)** | A2UI Schema v0.8 | `A2uiSchemaManager` & `a2ui_callback` render structured `Card`, `Column`, `Row`, `Text`, `Image`, and `Button` components natively. |
+| **Memory Persistence** | Vertex AI Memory Bank | `PreloadMemoryTool` auto-extracts dietary requirements, favorite ingredients, and culinary style across user sessions. |
+| **Sandboxed Code Execution** | Python Sandbox | `AgentEngineSandboxCodeExecutor` safely executes Python for scaling ingredient proportions and converting measurement units. |
+| **Dish Image Generation** | Gemini 3.1 Flash Lite Image | Generates realistic dish photography on-demand, publishing artifacts directly to Google Cloud Storage. |
+| **Cloud Recipe Storage** | Google Cloud Firestore | Structured recipe indexing supporting tag-based search (`favorite`, `gluten-free`, `quick`, `dinner`). |
+| **Live External Discovery** | External API Tooling | `search_online_recipes` connects to live recipe databases for real-time culinary inspiration. |
+| **Secure Inter-Agent Proxy** | A2A Protocol | Minimal FastAPI gateway authorizing frontend requests via Application Default Credentials (ADC). |
 
 ---
 
-## 🛠️ Project Structure
+## 📊 Feature Implementation Matrix
+
+| Feature Module | Status | Verification & Implementation |
+| :--- | :---: | :--- |
+| Firestore Recipe Database | ✅ Active | Real-time CRUD on `recipes` collection (seeded with favorite recipes) |
+| Vertex AI Memory Bank | ✅ Active | Memory extraction callback enabled for long-term user context |
+| Sandboxed Code Executor | ✅ Active | `AgentEngineSandboxCodeExecutor` configured on reasoning engine |
+| A2UI Declarative Interface | ✅ Active | Basic Catalog v0.8 support in web UI mini-renderer |
+| Imagen Dish Photography | ✅ Active | `gemini-3.1-flash-lite-image` integration + GCS public bucket hosting |
+| External Recipe Search | ✅ Active | `search_online_recipes` API integration |
+| Vector RAG Knowledge Base | ⏳ Planned | Enterprise document RAG expansion (planned architecture) |
+
+---
+
+## 📂 Repository Structure
 
 ```
 recipe-assistant/
 ├── app/
-│   ├── agent.py          # Root agent definition, system instructions, & tool configuration
-│   ├── tools.py          # Firestore, GCS, Image Gen, and Search function tools
-│   ├── a2ui_utils.py     # A2UI response callback and formatting helper
-│   └── fast_api_app.py   # FastAPI local agent entrypoint
+│   ├── agent.py            # ADK root agent configuration, system prompt & callbacks
+│   ├── tools.py            # Firestore, GCS, Imagen, and Search tool definitions
+│   ├── a2ui_utils.py       # A2UI response formatting & component schema utilities
+│   ├── fast_api_app.py     # Local agent execution endpoint
+│   └── app_utils/          # A2A protocol & telemetry helper utilities
 ├── frontend/
-│   ├── main.py           # FastAPI proxy connecting browser to deployed agent over A2A
-│   ├── Dockerfile        # Container build instructions for Cloud Run
-│   ├── requirements.txt  # Frontend python dependencies
-│   └── static/
-│       └── index.html    # Chat UI HTML with built-in A2UI card renderer
-├── agents-cli-manifest.yaml # Project metadata and deployment settings
-├── demo.gif              # Looping demonstration recording
-└── README.md             # Project documentation
+│   ├── main.py             # FastAPI A2A proxy server & static route handler
+│   ├── app.py              # Entrypoint wrapper module
+│   ├── Dockerfile          # Container build specification for Cloud Run deployment
+│   ├── requirements.txt    # Proxy dependencies
+│   ├── static/             # Production web client static assets
+│   └── templates/          # Chef AI Jinja template definitions
+├── seed_recipes.py         # Automated Firestore database seeding script
+├── agents-cli-manifest.yaml# Manifest specification for Agent Engine deployment
+├── demo.gif                # Executive looping demonstration recording
+└── README.md               # System documentation & architectural reference
 ```
 
 ---
 
-## 🚀 Setup & Local Execution
+## 💻 Local Setup & Execution Guide
 
 ### Prerequisites
 - Python 3.11+
-- `uv` or `pip`
-- Google Cloud SDK (`gcloud`) with Application Default Credentials configured:
+- Google Cloud SDK (`gcloud`) authenticated with Application Default Credentials:
   ```bash
   gcloud auth application-default login
   ```
@@ -71,35 +100,41 @@ recipe-assistant/
 uv sync
 ```
 
-### 2. Run Agent Locally
-To test the agent locally using the ADK CLI:
+### 2. Seed Firestore Database
+Populate your Google Cloud Firestore `recipes` collection with sample culinary data:
 ```bash
-agents-cli run "Suggest a healthy dinner recipe"
+uv run python seed_recipes.py
 ```
 
-To launch the local ADK developer playground:
+### 3. Run Agent CLI / Developer Playground
+Run single-shot agent queries locally:
 ```bash
-agents-cli playground
+uv run agents-cli run "What favorite recipes do I have saved?"
 ```
 
-### 3. Run Web Frontend Proxy
-Navigate to the `frontend` directory, set environment variables, and start the FastAPI proxy:
+Launch the local ADK developer playground:
+```bash
+uv run agents-cli playground
+```
+
+### 4. Launch Production Web Frontend
+Navigate to the `frontend/` directory, set environment variables, and launch the proxy:
 ```bash
 cd frontend
 pip install -r requirements.txt
-export AGENT_ENGINE_RESOURCE_NAME="projects/<PROJECT_ID>/locations/us-east1/reasoningEngines/<REASONING_ENGINE_ID>"
+export AGENT_ENGINE_RESOURCE_NAME="projects/<PROJECT_ID>/locations/us-east1/reasoningEngines/<ENGINE_ID>"
 export AGENT_DIRECTORY="app"
 python main.py
 ```
-After starting `main.py`, open your browser to port 8080 on localhost to use the web chat UI.
+Open `http://localhost:8080` in your web browser to interact with the Chef AI studio interface.
 
 ---
 
-## ☁️ Deployment
+## ☁️ Deployment Guide
 
-### Deploy Agent to Agent Runtime
+### Deploy Agent Engine to Vertex AI
 ```bash
-agents-cli deploy
+uv run agents-cli deploy
 ```
 
 ### Deploy Frontend Proxy to Cloud Run

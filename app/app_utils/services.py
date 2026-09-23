@@ -72,7 +72,9 @@ def get_artifact_service():
 def get_memory_service():
     """Process-wide memory service: Vertex AI Memory Bank when deployed or configured, else in-memory."""
     if uri := os.environ.get("MEMORY_SERVICE_URI"):
-        from google.adk.cli.utils.service_factory import create_memory_service_from_options
+        from google.adk.cli.utils.service_factory import (
+            create_memory_service_from_options,
+        )
 
         return create_memory_service_from_options(
             base_dir=_AGENT_DIR, memory_service_uri=uri
@@ -86,7 +88,9 @@ def get_memory_service():
         from google.adk.memory import VertexAiMemoryBankService
 
         return VertexAiMemoryBankService(
-            project=os.environ.get("GOOGLE_CLOUD_PROJECT", "qwiklabs-gcp-01-1a15618a3a67"),
+            project=os.environ.get(
+                "GOOGLE_CLOUD_PROJECT", "qwiklabs-gcp-01-1a15618a3a67"
+            ),
             location=os.environ.get("GOOGLE_CLOUD_AGENT_ENGINE_LOCATION")
             or os.environ.get("GOOGLE_CLOUD_LOCATION", "us-east1"),
             agent_engine_id=bank_id,

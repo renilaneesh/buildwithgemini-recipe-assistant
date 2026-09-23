@@ -1,5 +1,5 @@
-"""FastAPI entrypoint for frontend server. Alias/wrapper for main.py.
-"""
+"""FastAPI entrypoint for frontend server. Alias/wrapper for main.py."""
+
 import os
 import sys
 
@@ -7,9 +7,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from main import app, chat, _get_card
+    from main import _get_card, app, chat
 except ImportError:
-    from frontend.main import app, chat, _get_card
+    from frontend.main import _get_card, app, chat
 
 __all__ = ["app", "chat", "_get_card"]
 

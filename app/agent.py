@@ -17,7 +17,7 @@ import datetime
 from zoneinfo import ZoneInfo
 
 from a2ui.basic_catalog import BasicCatalog
-from a2ui.schema.manager import A2uiSchemaManager, VERSION_0_8
+from a2ui.schema.manager import VERSION_0_8, A2uiSchemaManager
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.apps import App
@@ -38,9 +38,7 @@ from app.tools import (
 )
 
 # Agent Engine resource name for code execution sandbox
-AGENT_ENGINE_RESOURCE_NAME = (
-    "projects/qwiklabs-gcp-01-1a15618a3a67/locations/us-east1/reasoningEngines/5593939129147588608"
-)
+AGENT_ENGINE_RESOURCE_NAME = "projects/qwiklabs-gcp-01-1a15618a3a67/locations/us-east1/reasoningEngines/5593939129147588608"
 
 code_executor = AgentEngineSandboxCodeExecutor(
     agent_engine_resource_name=AGENT_ENGINE_RESOURCE_NAME,
@@ -72,10 +70,10 @@ instruction = schema_manager.generate_system_prompt(
         '{"Image": {"url": {"literalString": "https://..."}}}. Never point an '
         "Image at a bare filename, an artifact name, or a non-http(s) path. If you do "
         "not have a public URL, add a short Text line noting the image instead. "
-        "No markdown in text; use the usageHint property (\'h1\', \'h2\', \'body\') for "
+        "No markdown in text; use the usageHint property ('h1', 'h2', 'body') for "
         "headings and emphasis. "
         "Output ONLY the raw A2UI JSON array — no prose, and never wrap it in "
-        "<a2a_datapart_json> tags or \'kind\'/\'data\'/\'metadata\' objects."
+        "<a2a_datapart_json> tags or 'kind'/'data'/'metadata' objects."
     ),
     include_schema=True,
     include_examples=True,

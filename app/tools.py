@@ -18,6 +18,7 @@ import inspect
 import os
 import uuid
 from datetime import datetime, timezone
+
 import requests
 from google import genai
 from google.adk.tools import ToolContext
@@ -61,7 +62,9 @@ def save_recipe(
     """
     db = get_firestore_client()
     doc_id = title.lower().replace(" ", "-").replace("/", "-")
-    doc_id = "".join(c for c in doc_id if c.isalnum() or c == "-") or str(uuid.uuid4())[:8]
+    doc_id = (
+        "".join(c for c in doc_id if c.isalnum() or c == "-") or str(uuid.uuid4())[:8]
+    )
 
     recipe_data = {
         "id": doc_id,
@@ -203,7 +206,9 @@ async def generate_dish_photo(
     mime_type = part.inline_data.mime_type or "image/jpeg"
 
     doc_id = recipe_name.lower().replace(" ", "-").replace("/", "-")
-    doc_id = "".join(c for c in doc_id if c.isalnum() or c == "-") or str(uuid.uuid4())[:8]
+    doc_id = (
+        "".join(c for c in doc_id if c.isalnum() or c == "-") or str(uuid.uuid4())[:8]
+    )
     ext = "png" if "png" in mime_type else "jpg"
     filename = f"{doc_id}.{ext}"
 
@@ -257,7 +262,11 @@ def search_online_recipes(keyword: str) -> str:
                 ing = meal.get(f"strIngredient{i}")
                 meas = meal.get(f"strMeasure{i}")
                 if ing and ing.strip():
-                    ing_str = f"{meas.strip()} {ing.strip()}" if meas and meas.strip() else ing.strip()
+                    ing_str = (
+                        f"{meas.strip()} {ing.strip()}"
+                        if meas and meas.strip()
+                        else ing.strip()
+                    )
                     ingredients.append(ing_str)
 
             results.append(
@@ -268,5 +277,3 @@ def search_online_recipes(keyword: str) -> str:
         return "\n".join(results)
     except Exception as e:
         return f"Error fetching online recipes: {str(e)}"
-
-
