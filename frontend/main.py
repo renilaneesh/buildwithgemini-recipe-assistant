@@ -1,108 +1,73 @@
-"""Minimal FastAPI proxy for a deployed A2A agent (Agent Runtime, agents-cli 1.1.0+).
-
-The browser talks ONLY to this proxy (same origin, no CORS, no GCP creds in the
-browser). The proxy authenticates with Application Default Credentials and
-forwards chat to the deployed agent over the A2A protocol, returning replies as
-clean, structured parts (text bubbles or A2UI cards) with all ADK/tracing metadata filtered out.
-"""
-
 import asyncio
 import json
 import os
 import re
+import sys
+from typing import Any, Dict
 
-import google.auth
-import google.auth.transport.requests
 import httpx
-from a2a.types import AgentCard
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-RESOURCE = os.environ.get(
+# Ensure frontend directory and root directory are in sys.path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(BASE_DIR)
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
+app = FastAPI(title="Recipe Assistant Proxy Frontend")
+
+REMOTE_ENGINE_URL = os.getenv(
     "AGENT_ENGINE_RESOURCE_NAME",
     "projects/qwiklabs-gcp-01-1a15618a3a67/locations/us-east1/reasoningEngines/5593939129147588608",
 )
-AGENT_DIRECTORY = os.environ.get("AGENT_DIRECTORY", "app")
-LOCATION = RESOURCE.split("/locations/")[1].split("/")[0]
 
-A2A_BASE = (
-    f"https://{LOCATION}-aiplatform.googleapis.com/reasoningEngines/v1/"
-    f"{RESOURCE}/api/a2a/{AGENT_DIRECTORY}"
-)
-A2A_CARD_URL = f"{A2A_BASE}/.well-known/agent-card.json"
-REMOTE_ENGINE_URL = f"https://{LOCATION}-aiplatform.googleapis.com/v1/{RESOURCE}"
-
-_creds, _ = google.auth.default(
-    scopes=["https://www.googleapis.com/auth/cloud-platform"]
-)
+_card: Dict[str, Any] | None = None
+_contexts: Dict[str, str] = {}
 
 
 def _auth_headers() -> dict[str, str]:
-    _creds.refresh(google.auth.transport.requests.Request())
-    return {
-        "Authorization": f"Bearer {_creds.token}",
-        "Content-Type": "application/json",
-    }
+    import google.auth
+    import google.auth.transport.requests
 
-
-app = FastAPI()
-
-
-@app.exception_handler(Exception)
-async def _json_errors(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=200,
-        content={
-            "parts": [{"kind": "text", "text": f"Error: {type(exc).__name__}: {exc}"}]
-        },
-    )
-
-
-_contexts: dict[str, str] = {}
-_card: AgentCard | None = None
+    creds, _ = google.auth.default()
+    auth_req = google.auth.transport.requests.Request()
+    creds.refresh(auth_req)
+    return {"Authorization": f"Bearer {creds.token}"}
 
 
 async def _get_card(
-    client: httpx.AsyncClient | None = None, default_url: str = "http://localhost:8080"
-) -> AgentCard:
-    """Fetch or create AgentCard ensuring required url field is provided."""
+    http_client: httpx.AsyncClient, default_url: str = "http://localhost:8080"
+) -> Dict[str, Any]:
     global _card
     if _card is None:
-        card_dict = {}
-        if client is not None:
-            try:
-                resp = await client.get(A2A_CARD_URL)
-                if resp.status_code == 200:
-                    card_dict = resp.json()
-            except Exception:
-                card_dict = {}
-
-        if isinstance(card_dict, dict):
-            if not card_dict.get("url"):
-                interfaces = card_dict.get("supportedInterfaces") or []
-                if (
-                    interfaces
-                    and isinstance(interfaces, list)
-                    and isinstance(interfaces[0], dict)
-                    and interfaces[0].get("url")
-                ):
-                    card_dict["url"] = interfaces[0]["url"]
-                else:
-                    card_dict["url"] = default_url or A2A_BASE
-            if not card_dict.get("name"):
-                card_dict["name"] = "recipe-assistant"
-            card = AgentCard(**card_dict)
-        else:
-            card = AgentCard(url=default_url or A2A_BASE, name="recipe-assistant")
-
-        card.url = A2A_BASE
+        try:
+            r = await http_client.get(
+                f"{REMOTE_ENGINE_URL.rstrip('/')}/.well-known/agent-card.json"
+            )
+            r.raise_for_status()
+            card = r.json()
+            if not card.get("url"):
+                card["url"] = default_url
+        except Exception:
+            card = {
+                "name": "Recipe Assistant Agent",
+                "description": "Culinary AI assistant powered by Gemini and ADK.",
+                "url": default_url,
+                "version": "1.0.0",
+                "capabilities": {},
+            }
         _card = card
     return _card
 
 
 def _clean_text_segment(text: str) -> str:
     """Strip raw protobuf / ADK metadata / tracing blocks from plain text."""
+    if not text:
+        return ""
     for marker in [
         "artifact_update {",
         "status_update {",
@@ -132,24 +97,50 @@ def _clean_text_segment(text: str) -> str:
 
 
 def _parse_text_for_a2ui(text: str) -> list[dict]:
-    """Parse text for embedded <a2ui-json> blocks and separate them into clean A2UI/text parts."""
+    """Parse text for embedded A2UI JSON structures or <a2ui-json> blocks."""
     out = []
-    pattern = r"<a2ui-json>([\s\S]*?)</a2ui-json>"
+    raw_trim = text.strip()
+    if raw_trim.startswith("{") and raw_trim.endswith("}"):
+        try:
+            parsed = json.loads(raw_trim)
+            if isinstance(parsed, dict):
+                data_obj = parsed.get("data") if "data" in parsed else parsed
+                if isinstance(data_obj, dict) and (
+                    "surfaceUpdate" in data_obj
+                    or "beginRendering" in data_obj
+                    or "components" in data_obj
+                ):
+                    return [{"kind": "a2ui", "data": data_obj}]
+        except Exception:
+            pass
+
+    clean = _clean_text_segment(text)
+    if not clean:
+        return out
+
+    pattern = r"(\{\s*\n?[\s\S]*?\"surfaceUpdate\"[\s\S]*?\n?\})"
     last_idx = 0
-    for match in re.finditer(pattern, text):
-        pre_text = _clean_text_segment(text[last_idx : match.start()])
+    for match in re.finditer(pattern, clean):
+        pre_text = _clean_text_segment(clean[last_idx : match.start()])
         if pre_text:
             out.append({"kind": "text", "text": pre_text})
         try:
             data = json.loads(match.group(1))
-            out.append({"kind": "a2ui", "data": data})
+            data_obj = (
+                data.get("data") if isinstance(data, dict) and "data" in data else data
+            )
+            out.append({"kind": "a2ui", "data": data_obj})
         except Exception:
             pass
         last_idx = match.end()
-    post_text = _clean_text_segment(text[last_idx:])
-    if post_text:
-        out.append({"kind": "text", "text": post_text})
-    return out
+
+    if last_idx > 0:
+        post_text = _clean_text_segment(clean[last_idx:])
+        if post_text:
+            out.append({"kind": "text", "text": post_text})
+        return out
+
+    return [{"kind": "text", "text": clean}]
 
 
 @app.post("/chat")
