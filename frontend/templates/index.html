@@ -3,69 +3,521 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recipe Assistant</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined">
-<style>
-  :root { --accent:#1a73e8; --bg:#f6f8fa; --border:#dfe3e8; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); display:flex; flex-direction:column; height:100vh; }
-  header { background:var(--accent); color:#fff; padding:.9rem 1.2rem; font-weight:700; }
-  #log { flex:1; overflow-y:auto; padding:1.2rem; max-width:780px; width:100%; margin:0 auto; }
-  .msg { margin:.6rem 0; }
-  .msg.user { text-align:right; }
-  .bubble { display:inline-block; padding:.6rem .9rem; border-radius:12px; background:#fff; border:1px solid var(--border); text-align:left; max-width:90%; white-space:pre-wrap; }
-  .msg.user .bubble { background:var(--accent); color:#fff; border:none; }
-  /* When the reply is an A2UI card, drop the bubble chrome so the card stands alone. */
-  .bubble.rich { background:transparent; border:none; padding:0; max-width:100%; white-space:normal; }
-  form { display:flex; gap:.5rem; padding:1rem; border-top:1px solid var(--border); background:#fff; }
-  input { flex:1; padding:.7rem; border:1px solid var(--border); border-radius:8px; font-size:1rem; }
-  button { padding:.7rem 1.1rem; border:none; border-radius:8px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
+<title>Chef AI — Smart Recipe Assistant & Culinary Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
 
-  /* --- A2UI component styles (Card, Column, Row, Text, Divider, List, Image, Icon, Button) --- */
-  .a2card { border:1px solid var(--border); border-radius:12px; padding:1rem; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.06); max-width:100%; margin-top:.4rem; }
-  .a2card + .a2card, .a2col > .a2card { margin-top:.6rem; }
-  .a2col { display:flex; flex-direction:column; gap:.4rem; }
-  .a2row { display:flex; flex-direction:row; gap:.6rem; align-items:center; flex-wrap:wrap; }
-  .a2row.between { justify-content:space-between; }
-  .a2text { margin:0; line-height:1.4; color:#202124; }
-  .a2text.a2-h1 { font-size:1.5rem; font-weight:700; color:#1a73e8; }
-  .a2text.a2-h2 { font-size:1.25rem; font-weight:700; color:#202124; }
-  .a2text.a2-h3 { font-size:1.1rem; font-weight:600; }
-  .a2text.a2-h4 { font-size:1rem; font-weight:600; }
-  .a2text.a2-caption { font-size:.85rem; color:#5f6368; }
-  .a2divider { border:none; border-top:1px solid var(--border); margin:.6rem 0; width:100%; }
-  .a2img { max-width:100%; height:auto; border-radius:8px; display:block; margin:.4rem 0; }
-  .a2btn { padding:.4rem .8rem; border:1px solid var(--accent); border-radius:6px; background:#e8f0fe; color:var(--accent); font-size:.9rem; font-weight:600; cursor:pointer; }
-  .a2btn:hover { background:var(--accent); color:#fff; }
-  .material-symbols-outlined { font-family:'Material Symbols Outlined'; font-size:1.25rem; line-height:1; vertical-align:middle; color:var(--accent); }
+<style>
+  :root {
+    --primary: #059669;
+    --primary-hover: #047857;
+    --primary-light: #ecfdf5;
+    --accent: #d97706;
+    --accent-light: #fffbeb;
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --text-dark: #0f172a;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+    --shadow-md: 0 10px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+    --shadow-lg: 0 20px 30px -10px rgba(5,150,105,0.12);
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-dark);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* --- Top Header & Brand Bar --- */
+  header {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0.9rem 1.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 10;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .brand-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--primary), #10b981);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+  }
+
+  .brand-icon span { font-size: 26px; }
+
+  .brand-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    letter-spacing: -0.02em;
+  }
+
+  .brand-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.9rem;
+    background: var(--primary-light);
+    border: 1px solid rgba(5, 150, 105, 0.2);
+    border-radius: 99px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.7);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(5, 150, 105, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
+  }
+
+  /* --- Main Container & Log Area --- */
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    scroll-behavior: smooth;
+  }
+
+  #log {
+    width: 100%;
+    max-width: 840px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    padding-bottom: 1rem;
+  }
+
+  /* --- Quick Action Chips / Welcome Banner --- */
+  .welcome-card {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: #fff;
+    border-radius: var(--radius-lg);
+    padding: 1.8rem;
+    margin-bottom: 0.5rem;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .welcome-card::after {
+    content: 'skillet';
+    font-family: 'Material Symbols Outlined';
+    position: absolute;
+    right: -20px;
+    bottom: -30px;
+    font-size: 160px;
+    opacity: 0.12;
+    pointer-events: none;
+  }
+
+  .welcome-card h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .welcome-card p {
+    font-size: 0.95rem;
+    opacity: 0.9;
+    max-width: 600px;
+    line-height: 1.5;
+    margin-bottom: 1.2rem;
+  }
+
+  .chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .chip-btn {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 99px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .chip-btn:hover {
+    background: #ffffff;
+    color: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+
+  /* --- Message Bubbles & Row Layout --- */
+  .msg-row {
+    display: flex;
+    gap: 0.9rem;
+    width: 100%;
+    animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-row.user {
+    flex-direction: row-reverse;
+  }
+
+  .avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 20px;
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .msg-row.agent .avatar {
+    background: linear-gradient(135deg, var(--primary), #10b981);
+  }
+
+  .msg-row.user .avatar {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+  }
+
+  .msg-content {
+    max-width: 82%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .bubble {
+    padding: 0.85rem 1.2rem;
+    border-radius: 18px;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    color: var(--text-dark);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .msg-row.agent .bubble {
+    border-top-left-radius: 4px;
+  }
+
+  .msg-row.user .bubble {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-top-right-radius: 4px;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
+  }
+
+  .bubble.rich {
+    background: transparent;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+    white-space: normal;
+  }
+
+  /* --- Gourmet A2UI Component Renderers --- */
+  .a2card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-md);
+    margin-top: 0.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .a2card:hover {
+    box-shadow: 0 12px 28px -6px rgba(0,0,0,0.1);
+  }
+
+  .a2col { display: flex; flex-direction: column; gap: 0.6rem; }
+  .a2row { display: flex; flex-direction: row; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  .a2row.between { justify-content: space-between; }
+
+  .a2text { margin: 0; line-height: 1.5; color: var(--text-dark); }
+  .a2text.a2-h1 { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+  .a2text.a2-h2 { font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--text-dark); }
+  .a2text.a2-h3 { font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 600; color: var(--text-dark); }
+  .a2text.a2-h4 { font-weight: 600; font-size: 1rem; color: var(--text-dark); }
+  .a2text.a2-caption { font-size: 0.85rem; color: var(--text-muted); }
+
+  .a2divider { border: none; border-top: 1px solid var(--border); margin: 0.8rem 0; width: 100%; }
+
+  .a2img-wrapper {
+    position: relative;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin: 0.6rem 0;
+    box-shadow: var(--shadow-md);
+    background: #000;
+  }
+
+  .a2img {
+    width: 100%;
+    max-height: 380px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+  }
+
+  .a2img:hover { transform: scale(1.02); }
+
+  .a2btn {
+    padding: 0.55rem 1.1rem;
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-sm);
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .a2btn:hover {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+  }
+
+  /* --- Bottom Input Dock --- */
+  .footer-dock {
+    width: 100%;
+    max-width: 840px;
+    margin: 0 auto;
+    padding: 0 1.5rem 1.2rem 1.5rem;
+    background: transparent;
+  }
+
+  form {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 0.6rem 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    box-shadow: var(--shadow-md);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  form:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15), var(--shadow-md);
+  }
+
+  input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.98rem;
+    font-family: inherit;
+    color: var(--text-dark);
+    background: transparent;
+  }
+
+  input::placeholder { color: #94a3b8; }
+
+  button.send-btn {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(5, 150, 105, 0.3);
+    flex-shrink: 0;
+  }
+
+  button.send-btn:hover {
+    background: var(--primary-hover);
+    transform: scale(1.05);
+  }
+
+  button.send-btn span { font-size: 20px; }
+
+  /* Loading typing indicator */
+  .typing-dots {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0.6rem 0.4rem;
+  }
+
+  .typing-dots div {
+    width: 7px;
+    height: 7px;
+    background: var(--primary);
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out both;
+  }
+
+  .typing-dots div:nth-child(1) { animation-delay: -0.32s; }
+  .typing-dots div:nth-child(2) { animation-delay: -0.16s; }
+
+  @keyframes typing {
+    0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+    40% { transform: scale(1); opacity: 1; }
+  }
 </style>
 </head>
 <body>
-<header>Recipe Assistant</header>
-<div id="log"></div>
-<form id="form">
-  <input id="input" placeholder="Ask something…" autocomplete="off" autofocus>
-  <button>Send</button>
-</form>
+
+<header>
+  <div class="brand">
+    <div class="brand-icon">
+      <span class="material-symbols-outlined">skillet</span>
+    </div>
+    <div>
+      <div class="brand-title">Chef AI</div>
+      <div class="brand-subtitle">Smart Recipe Assistant & Culinary Companion</div>
+    </div>
+  </div>
+  <div class="status-badge">
+    <div class="pulse-dot"></div>
+    Reasoning Engine Active
+  </div>
+</header>
+
+<main>
+  <div id="log">
+    <div class="welcome-card">
+      <h2>Welcome to your Culinary Studio 🍳</h2>
+      <p>Ask me to discover recipes, search saved dishes, convert units, scale ingredients, or generate appetizing AI food photography!</p>
+      <div class="chips-container">
+        <button class="chip-btn" onclick="sendPrompt('What favorite recipes do I have saved in my collection?')">
+          <span class="material-symbols-outlined" style="font-size:16px;">book</span> Saved Recipes
+        </button>
+        <button class="chip-btn" onclick="sendPrompt('Show me the recipe card and an image for Creamy Garlic Parmesan Pasta.')">
+          <span class="material-symbols-outlined" style="font-size:16px;">image</span> Pasta & Dish Photo
+        </button>
+        <button class="chip-btn" onclick="sendPrompt('Search for healthy gluten-free dinner ideas')">
+          <span class="material-symbols-outlined" style="font-size:16px;">restaurant</span> Gluten-Free Dinners
+        </button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="footer-dock">
+  <form id="form">
+    <input id="input" placeholder="Ask Chef AI for recipes, ingredients, or cooking tips..." autocomplete="off" autofocus>
+    <button type="submit" class="send-btn" title="Send message">
+      <span class="material-symbols-outlined">send</span>
+    </button>
+  </form>
+</div>
 
 <script>
 const log = document.getElementById("log");
 const form = document.getElementById("form");
 const input = document.getElementById("input");
 
-function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
 
-function bubble(who) {
-  const m = el("div", "msg " + who);
+function appendMsg(sender) {
+  const row = el("div", "msg-row " + sender);
+  const avatar = el("div", "avatar");
+  avatar.innerHTML = sender === "user" 
+    ? '<span class="material-symbols-outlined">person</span>' 
+    : '<span class="material-symbols-outlined">cooking</span>';
+  
+  const content = el("div", "msg-content");
   const b = el("div", "bubble");
-  m.appendChild(b); log.appendChild(m); log.scrollTop = log.scrollHeight;
+  content.appendChild(b);
+  row.appendChild(avatar);
+  row.appendChild(content);
+  log.appendChild(row);
+  
+  const mainEl = document.querySelector('main');
+  mainEl.scrollTop = mainEl.scrollHeight;
   return b;
 }
 
-/* ----------------------------------------------------------------------------
- * A2UI mini-renderer (v0.8 Basic Catalog subset).
- * Renders Card / Column / Row / Text / Divider / List / Image / Icon / Button.
- * -------------------------------------------------------------------------- */
+function sendPrompt(text) {
+  input.value = text;
+  form.dispatchEvent(new Event('submit', { cancelable: true }));
+}
 
 function boundStr(v) {
   if (v == null) return "";
@@ -82,7 +534,9 @@ function childIds(props) {
   return ids;
 }
 
-function iconName(n) { return String(n || "").replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/\s+/g, "_").toLowerCase(); }
+function iconName(n) {
+  return String(n || "").replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/\s+/g, "_").toLowerCase();
+}
 
 function buildNode(id, comps, seen) {
   if (!id || seen.has(id)) return null;
@@ -95,16 +549,21 @@ function buildNode(id, comps, seen) {
 
   switch (type) {
     case "Card": {
-      const d = el("div", "a2card"); kids().forEach(n => d.appendChild(n)); return d;
+      const d = el("div", "a2card");
+      kids().forEach(n => d.appendChild(n));
+      return d;
     }
     case "Column":
     case "List": {
       const horizontal = type === "List" && props.direction === "horizontal";
-      const d = el("div", horizontal ? "a2row" : "a2col"); kids().forEach(n => d.appendChild(n)); return d;
+      const d = el("div", horizontal ? "a2row" : "a2col");
+      kids().forEach(n => d.appendChild(n));
+      return d;
     }
     case "Row": {
       const d = el("div", "a2row" + (props.distribution === "spaceBetween" ? " between" : ""));
-      kids().forEach(n => d.appendChild(n)); return d;
+      kids().forEach(n => d.appendChild(n));
+      return d;
     }
     case "Text": {
       const t = el("div", "a2text");
@@ -119,13 +578,22 @@ function buildNode(id, comps, seen) {
     case "Image": {
       const src = boundStr(props.url || props.src);
       if (!src || !/^https?:\/\//i.test(src)) return null;
-      const img = el("img", "a2img"); img.src = src; img.alt = boundStr(props.alt) || "Image"; return img;
+      const wrap = el("div", "a2img-wrapper");
+      const img = el("img", "a2img");
+      img.src = src;
+      img.alt = boundStr(props.alt) || "Dish Photo";
+      wrap.appendChild(img);
+      return wrap;
     }
     case "Icon": {
-      const s = el("span", "material-symbols-outlined"); s.textContent = iconName(boundStr(props.name) || props.name); return s;
+      const s = el("span", "material-symbols-outlined");
+      s.textContent = iconName(boundStr(props.name) || props.name);
+      return s;
     }
     case "Button": {
-      const btn = el("button", "a2btn"); btn.textContent = boundStr(props.text || props.label) || "Action"; return btn;
+      const btn = el("button", "a2btn");
+      btn.textContent = boundStr(props.text || props.label) || "Action";
+      return btn;
     }
     default:
       return null;
@@ -143,11 +611,17 @@ function renderSurface(messages, container) {
   let rootIds = roots.filter(r => comps[r]);
   if (rootIds.length === 0) {
     const referenced = new Set();
-    for (const id in comps) { const spec = comps[id]; childIds(spec[Object.keys(spec)[0]] || {}).forEach(c => referenced.add(c)); }
+    for (const id in comps) {
+      const spec = comps[id];
+      childIds(spec[Object.keys(spec)[0]] || {}).forEach(c => referenced.add(c));
+    }
     rootIds = Object.keys(comps).filter(id => !referenced.has(id));
   }
   let drew = false;
-  for (const rid of rootIds) { const node = buildNode(rid, comps, new Set()); if (node) { container.appendChild(node); drew = true; } }
+  for (const rid of rootIds) {
+    const node = buildNode(rid, comps, new Set());
+    if (node) { container.appendChild(node); drew = true; }
+  }
   return drew;
 }
 
@@ -155,7 +629,11 @@ function flattenText(messages) {
   const out = [];
   for (const m of messages) {
     const su = m.surfaceUpdate;
-    if (su && Array.isArray(su.components)) for (const c of su.components) if (c && c.component && c.component.Text) out.push(boundStr(c.component.Text.text));
+    if (su && Array.isArray(su.components)) {
+      for (const c of su.components) {
+        if (c && c.component && c.component.Text) out.push(boundStr(c.component.Text.text));
+      }
+    }
   }
   return out.join("\n").trim();
 }
@@ -184,26 +662,36 @@ function renderReply(b, parts) {
       if (flat) b.appendChild(el("div", null, flat));
     }
   }
-  if (!b.childNodes.length) b.textContent = "(no response)";
-  log.scrollTop = log.scrollHeight;
+  if (!b.childNodes.length) b.textContent = "Chef AI has prepared your recipe information.";
+  const mainEl = document.querySelector('main');
+  mainEl.scrollTop = mainEl.scrollHeight;
 }
 
 form.addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const text = input.value.trim();
   if (!text) return;
-  bubble("user").textContent = text;
+
+  const userBubble = appendMsg("user");
+  userBubble.textContent = text;
   input.value = "";
-  const b = bubble("agent"); b.textContent = "…";
+
+  const agentBubble = appendMsg("agent");
+  agentBubble.innerHTML = '<div class="typing-dots"><div></div><div></div><div></div></div>';
+
   try {
-    const res = await fetch("/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }) });
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text })
+    });
     const raw = await res.text();
     let data;
     try { data = JSON.parse(raw); }
-    catch { throw new Error(`Server returned non-JSON (HTTP ${res.status}). ${raw.slice(0, 300)}`); }
-    renderReply(b, data.parts || []);
+    catch { throw new Error(`Server returned non-JSON response.`); }
+    renderReply(agentBubble, data.parts || []);
   } catch (e) {
-    b.textContent = "Error: " + e.message;
+    agentBubble.textContent = "Error: " + e.message;
   }
 });
 </script>
