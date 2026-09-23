@@ -3,11 +3,7 @@
 The browser talks ONLY to this proxy (same origin, no CORS, no GCP creds in the
 browser). The proxy authenticates with Application Default Credentials and
 forwards chat to the deployed agent over the A2A protocol, returning replies as
-structured parts the chat UI knows how to show:
-
-  * {"kind": "text", "text": ...}  -> a normal chat bubble
-  * {"kind": "a2ui", "data": ...}  -> one A2UI message (beginRendering /
-    surfaceUpdate); static/index.html renders these as a card.
+clean, structured parts (text bubbles or A2UI cards) with all ADK/tracing metadata filtered out.
 """
 
 import asyncio
@@ -20,7 +16,7 @@ import google.auth.transport.requests
 import httpx
 from a2a.types import AgentCard
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 RESOURCE = os.environ.get(
@@ -98,22 +94,35 @@ async def _get_card(client: httpx.AsyncClient | None = None, default_url: str = 
     return _card
 
 
+def _clean_text_segment(text: str) -> str:
+    """Strip raw protobuf / ADK metadata / tracing blocks from plain text."""
+    for marker in ["artifact_update {", "status_update {", "metadata {", "task_id:", "context_id:"]:
+        if marker in text:
+            text = text.split(marker)[0]
+    clean_lines = []
+    for line in text.splitlines():
+        if any(bad in line for bad in ["adk_user_id", "adk_session_id", "adk_invocation_id", "adk_event_id", "adk_author", "adk_app_name", "TASK_STATE_"]):
+            continue
+        clean_lines.append(line)
+    return "\n".join(clean_lines).strip()
+
+
 def _parse_text_for_a2ui(text: str) -> list[dict]:
-    """Parse text for embedded <a2ui-json> blocks and separate them into A2UI parts."""
+    """Parse text for embedded <a2ui-json> blocks and separate them into clean A2UI/text parts."""
     out = []
     pattern = r"<a2ui-json>([\s\S]*?)</a2ui-json>"
     last_idx = 0
     for match in re.finditer(pattern, text):
-        pre_text = text[last_idx:match.start()].strip()
+        pre_text = _clean_text_segment(text[last_idx:match.start()])
         if pre_text:
             out.append({"kind": "text", "text": pre_text})
         try:
             data = json.loads(match.group(1))
             out.append({"kind": "a2ui", "data": data})
         except Exception:
-            out.append({"kind": "text", "text": match.group(0)})
+            pass
         last_idx = match.end()
-    post_text = text[last_idx:].strip()
+    post_text = _clean_text_segment(text[last_idx:])
     if post_text:
         out.append({"kind": "text", "text": post_text})
     return out
@@ -127,7 +136,6 @@ async def chat(req: Request):
     session_id = _contexts.get(user_id)
     base_url = str(req.base_url).rstrip("/")
 
-    # Ensure AgentCard can be instantiated / retrieved without validation errors
     async with httpx.AsyncClient(headers=_auth_headers(), timeout=30) as http_client:
         await _get_card(http_client, default_url=base_url)
 
@@ -170,14 +178,17 @@ async def chat(req: Request):
     # Extract text content if no A2UI cards were extracted from verbose logs
     if not parts:
         lines = []
+        capturing = False
         for line in out_str.splitlines():
             if line.startswith("[agent]: "):
                 lines.append(line[9:])
-            elif any(line.startswith(prefix) for prefix in [
-                "Querying remote agent", "[user]:", "Session:", "  Resume with:", "Artifacts:"
+                capturing = True
+            elif any(prefix in line for prefix in [
+                "Querying remote agent", "[user]:", "Session:", "  Resume with:", "Artifacts:",
+                "artifact_update", "status_update", "metadata {", "task_id:", "context_id:", "adk_"
             ]):
-                continue
-            elif lines and line.strip():
+                capturing = False
+            elif capturing:
                 lines.append(line)
         if lines:
             raw_text = "\n".join(lines).strip()
@@ -190,7 +201,18 @@ async def chat(req: Request):
 
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
+
+@app.get("/")
+async def root():
+    index_file = os.path.join(STATIC_DIR, "index.html")
+    if not os.path.exists(index_file) and os.path.exists(os.path.join(TEMPLATES_DIR, "index.html")):
+        index_file = os.path.join(TEMPLATES_DIR, "index.html")
+    with open(index_file, "r", encoding="utf-8") as f:
+        content = f.read()
+    return HTMLResponse(content)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 if __name__ == "__main__":
